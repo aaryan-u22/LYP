@@ -5,56 +5,57 @@ import os
 SAVE_DIR = 'models/final_charts/'
 os.makedirs(SAVE_DIR, exist_ok=True)
 
+# 1. MASTER DATA
+# -------------------------------------------------
+# Order: Traditional -> Modern -> Proposed (Worst to Best)
+MODELS = [
+    'Traditional\n(Random Forest)', 
+    'Modern\n(1D-CNN)', 
+    'Proposed: LogReg\n(Linear)', 
+    'Proposed: SVM\n(Geometric)', 
+    'Proposed: XGBoost\n(Tree-Based)'
+]
+
+# Accuracy (%)
+ACCURACY = [92.00, 94.88, 79.42, 95.25, 97.47]
+
+# F1-Score for Anomalies (%) - The User's Specific Metric
+F1_SCORES = [80.0, 84.0, 56.0, 87.0, 93.0]
+
+# Inference Latency (ms) - Estimated
+SPEED_MS = [20, 1500, 5, 250, 10] 
+
 def plot_victory_chart():
-    # 1. THE DATA (Complete Tournament Results)
-    # -------------------------------------------------
-    models = [
-        'Traditional\n(Random Forest)', 
-        'Modern\n(1D-CNN)', 
-        'Proposed: LogReg\n(Linear)', 
-        'Proposed: SVM\n(Geometric)', 
-        'Proposed: XGBoost\n(Tree-Based)'
-    ]
-    
-    # Accuracy (Overall Performance)
-    accuracy = [92.00, 94.88, 79.42, 95.25, 97.47]
-    
-    # F1-Score for Anomalies (The "True" Diagnostic Power)
-    # These numbers come from your previous run logs
-    f1_scores = [80.0, 84.0, 56.0, 87.0, 93.0] 
-    
-    # 2. PLOT SETUP
-    # -------------------------------------------------
-    x = np.arange(len(models))
+    print("Generating Comparison Chart...")
+    x = np.arange(len(MODELS))
     width = 0.35 
 
-    # Use a professional style
     plt.style.use('seaborn-v0_8-whitegrid')
-    fig, ax = plt.subplots(figsize=(14, 7)) # Wider to fit 5 models
+    fig, ax = plt.subplots(figsize=(14, 7))
     
-    # 3. CREATE BARS
-    rects1 = ax.bar(x - width/2, accuracy, width, label='Accuracy', 
+    # Accuracy Bars (Blue)
+    rects1 = ax.bar(x - width/2, ACCURACY, width, label='Accuracy', 
                     color='#2c3e50', edgecolor='white', linewidth=1)
     
-    rects2 = ax.bar(x + width/2, f1_scores, width, label='Anomaly F1-Score', 
+    # F1-Score Bars (Red)
+    rects2 = ax.bar(x + width/2, F1_SCORES, width, label='Anomaly F1-Score', 
                     color='#e74c3c', edgecolor='white', linewidth=1)
 
-    # 4. STYLING & LABELS
+    # Styling
     ax.set_ylabel('Score (%)', fontsize=12, fontweight='bold', labelpad=10)
     ax.set_title('COMPARISON CHART', fontsize=16, fontweight='bold', pad=20)
     ax.set_xticks(x)
-    ax.set_xticklabels(models, fontsize=11, fontweight='bold')
-    ax.set_ylim(50, 105) # Lower floor to 50 to show LogReg failure
+    ax.set_xticklabels(MODELS, fontsize=11, fontweight='bold')
+    ax.set_ylim(50, 105)
     
-    # Legend
-    ax.legend(loc='lower right', frameon=True, framealpha=0.9, shadow=True, fontsize=11)
+    ax.legend(loc='lower right', frameon=True, framealpha=0.9, fontsize=11)
     
-    # Highlight the Winner (XGB)
+    # Highlight the Best Model (Index 4)
     winner_idx = 4
     ax.text(winner_idx, 102, "BEST", ha='center', va='bottom', fontweight='bold', color='#27ae60', fontsize=12)
-    
-    # 5. ADD VALUE LABELS
-    def add_labels(rects):
+
+    # Add Value Labels
+    def autolabel(rects):
         for rect in rects:
             height = rect.get_height()
             ax.annotate(f'{height:.1f}%',
@@ -63,15 +64,46 @@ def plot_victory_chart():
                         textcoords="offset points",
                         ha='center', va='bottom', fontsize=9, fontweight='bold')
 
-    add_labels(rects1)
-    add_labels(rects2)
+    autolabel(rects1)
+    autolabel(rects2)
 
-    # 6. SAVE
     plt.tight_layout()
-    save_path = os.path.join(SAVE_DIR, 'final_tournament_full.png')
+    save_path = os.path.join(SAVE_DIR, 'comparison_chart.png')
     plt.savefig(save_path, dpi=300)
-    print(f"Chart saved to {save_path}")
-    plt.show()
+    print(f"Saved comparison_chart.png")
+
+def plot_efficiency_bubble():
+    print("Generating Efficiency Plot...")
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    # Bubble Sizes (Model Weight/Complexity)
+    sizes = [500, 3000, 100, 800, 200] 
+    colors = ['#34495e', '#c0392b', '#95a5a6', '#8e44ad', '#27ae60']
+    
+    ax.scatter(SPEED_MS, ACCURACY, s=sizes, c=colors, alpha=0.7, edgecolors='black', linewidth=1.5)
+    
+    for i, txt in enumerate(MODELS):
+        clean_txt = txt.replace('\n', ' ')
+        ax.annotate(clean_txt, (SPEED_MS[i], ACCURACY[i]), 
+                    xytext=(0, 15), textcoords='offset points', 
+                    ha='center', fontweight='bold', fontsize=9)
+
+    ax.set_xscale('log')
+    ax.set_xlabel('Inference Latency (ms / 1k beats) [Log Scale]', fontweight='bold', fontsize=11)
+    ax.set_ylabel('Accuracy (%)', fontweight='bold', fontsize=11)
+    ax.set_title('PERFORMANCE VS EFFICIENCY', fontweight='bold', fontsize=14)
+    ax.grid(True, which="both", ls="--", alpha=0.4)
+    
+    # Zoning Lines
+    plt.axvline(x=50, color='red', linestyle=':', linewidth=2)
+    plt.text(8, 80, "Real-Time Zone\n(Low Latency)", color='#27ae60', fontweight='bold')
+    plt.text(200, 80, "High-Compute Zone\n(High Latency)", color='#c0392b', fontweight='bold')
+
+    plt.tight_layout()
+    save_path = os.path.join(SAVE_DIR, 'efficiency_plot.png')
+    plt.savefig(save_path, dpi=300)
+    print("Saved efficiency_plot.png")
 
 if __name__ == "__main__":
     plot_victory_chart()
+    plot_efficiency_bubble()
