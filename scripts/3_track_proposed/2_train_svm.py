@@ -1,5 +1,6 @@
 import sys
 import os
+# add project root
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 import pandas as pd
@@ -10,7 +11,6 @@ from sklearn.metrics import classification_report, confusion_matrix
 from imblearn.over_sampling import SMOTE
 from src.config import PROCESSED_BASE_DIR, MODEL_BASE_DIR, RANDOM_SEED
 
-# Config: Using Combined Features
 DATA_DIR = os.path.join(PROCESSED_BASE_DIR, '3_proposed_combined')
 SAVE_DIR = os.path.join(MODEL_BASE_DIR, '3_proposed_svm')
 
@@ -18,7 +18,7 @@ def main():
     os.makedirs(SAVE_DIR, exist_ok=True)
     print(f"--- Track 3: Training SVM (Physics + Stats) ---")
     
-    # 1. Load
+    # load data
     train = pd.read_csv(os.path.join(DATA_DIR, 'train.csv'))
     test = pd.read_csv(os.path.join(DATA_DIR, 'test.csv'))
     
@@ -27,24 +27,23 @@ def main():
     X_test = test.drop(['Label', 'PatientID'], axis=1, errors='ignore')
     y_test = test['Label']
     
-    # 2. Scale (CRITICAL for SVM)
+    # scale features (required for SVM)
     print("Scaling Features...")
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
     X_test_s = scaler.transform(X_test)
     
-    # 3. SMOTE
+    # balance dataset
     print("Applying SMOTE...")
     smote = SMOTE(random_state=RANDOM_SEED)
     X_res, y_res = smote.fit_resample(X_train_s, y_train)
     
-    # 4. Train SVM
-    print("Training SVM (RBF Kernel)... This may take a few minutes.")
-    # Cache size increased to speed up training
+    # train model
+    print("Training SVM (RBF Kernel)...")
     model = SVC(kernel='rbf', C=1.0, probability=True, random_state=RANDOM_SEED, cache_size=1000)
     model.fit(X_res, y_res)
     
-    # 5. Evaluate
+    # evaluate
     print("\n--- RESULTS (SVM) ---")
     y_pred = model.predict(X_test_s)
     print(classification_report(y_test, y_pred, target_names=['Normal', 'Anomaly']))

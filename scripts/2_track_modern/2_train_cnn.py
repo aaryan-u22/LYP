@@ -1,5 +1,6 @@
 import sys
 import os
+# project root path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 import numpy as np
@@ -11,35 +12,30 @@ DATA_DIR = os.path.join(PROCESSED_BASE_DIR, '2_modern')
 SAVE_DIR = os.path.join(MODEL_BASE_DIR, '2_modern')
 
 def build_cnn():
-    # A slightly deeper, more robust architecture
+    # CNN model blocks
     model = models.Sequential([
         layers.Input(shape=(WINDOW_SIZE, 1)),
         
-        # Block 1
         layers.Conv1D(32, 11, activation='relu', padding='same'),
         layers.BatchNormalization(),
         layers.MaxPooling1D(2),
         
-        # Block 2
         layers.Conv1D(64, 7, activation='relu', padding='same'),
         layers.BatchNormalization(),
         layers.MaxPooling1D(2),
         
-        # Block 3
         layers.Conv1D(128, 5, activation='relu', padding='same'),
         layers.BatchNormalization(),
         layers.MaxPooling1D(2),
         
-        # Global Features
         layers.GlobalAveragePooling1D(),
         
-        # Classifier
         layers.Dense(128, activation='relu'),
         layers.Dropout(0.4),
         layers.Dense(1, activation='sigmoid')
     ])
     
-    # Lower learning rate for stability
+    # optimized learning rate
     opt = optimizers.Adam(learning_rate=0.0005)
     model.compile(optimizer=opt, loss='binary_crossentropy', metrics=['accuracy'])
     return model
@@ -60,20 +56,19 @@ def main():
     X_train = X_train.reshape(X_train.shape[0], WINDOW_SIZE, 1)
     X_test = X_test.reshape(X_test.shape[0], WINDOW_SIZE, 1)
     
-    # TWEAK: Less aggressive weights to boost Accuracy/Precision
-    # Instead of 2.9, we use 1.5. This tells the model "Anomalies are important, but don't panic."
+    # moderate class weights
     class_weight = {0: 1.0, 1: 1.5}
     
     print("Training CNN (High Accuracy Mode)...")
     model = build_cnn()
     
-    # TWEAK: Learning Rate Scheduler to squeeze out the last few % of accuracy
+    # training callbacks
     lr_scheduler = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=0.00001)
     early_stop = callbacks.EarlyStopping(monitor='val_accuracy', patience=5, restore_best_weights=True)
     
     history = model.fit(
         X_train, y_train,
-        epochs=20, # Increased epochs
+        epochs=20,
         batch_size=64,
         validation_split=0.15,
         class_weight=class_weight,

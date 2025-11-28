@@ -1,5 +1,6 @@
 import sys
 import os
+# project root path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 import glob
@@ -26,11 +27,17 @@ def worker(record_id):
         norm_sym = ['N', 'L', 'R', 'e', 'j']
         half_win = WINDOW_SIZE // 2
         
+        # extract heartbeat windows + labels
         for r, lbl in zip(annot.sample, annot.symbol):
-            if lbl in ['[', ']', '!', 'x', '|', '~', '+', '"', 'p', 't', 'u', '`', '\'', '^', 's', 'k', 'l']: continue
-            if r - half_win < 0 or r + half_win >= len(clean_sig): continue
+            if lbl in ['[', ']', '!', 'x', '|', '~', '+', '"', 'p', 't', 'u', '`', '\'', '^', 's', 'k', 'l']:
+                continue
+            # skip if window goes out of bounds
+            if r - half_win < 0 or r + half_win >= len(clean_sig):
+                continue
             seg = clean_sig[r - half_win : r + half_win]
-            if np.max(np.abs(seg)) > 5.0: continue
+            # remove extreme artifacts
+            if np.max(np.abs(seg)) > 5.0:
+                continue
             segments.append(seg)
             labels.append(0 if lbl in norm_sym else 1)
             
@@ -44,6 +51,7 @@ def main():
     ids = list(set([os.path.basename(f).split('.')[0] for f in files]))
     
     print(f"--- Track 2 ETL (High Score Mode) ---")
+    # parallel extraction
     with Pool(processes=NUM_CORES) as pool:
         results = list(tqdm(pool.imap(worker, ids), total=len(ids)))
     
@@ -56,7 +64,7 @@ def main():
     X = np.array(all_segs)
     y = np.array(all_lbls)
     
-    # RANDOM SPLIT
+    # stratified split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=TEST_SPLIT_RATIO, random_state=RANDOM_SEED, stratify=y
     )
